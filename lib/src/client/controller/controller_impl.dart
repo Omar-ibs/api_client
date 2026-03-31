@@ -12,8 +12,13 @@ base class BaseController<T> extends ApiController<T> {
     super.enableLogs = true,
     super.authenticated = false,
     super.method = HTTPMethod.get,
+    super.successStatusCodes = const [200],
   });
   final logger = BaseLogger();
+
+  /// Returns `true` when [statusCode] is in [successStatusCodes].
+  bool _isSuccess(int? statusCode) =>
+      statusCode != null && successStatusCodes.contains(statusCode);
 
   @override
   Future<dynamic> call([Map<String, dynamic>? queryParameter]) async {
@@ -49,7 +54,8 @@ base class BaseController<T> extends ApiController<T> {
         cancelToken: cancelToken,
         onReceiveProgress: onReceiveProgress,
       );
-      if (response.statusCode == 200 && response.data != null) {
+
+      if (_isSuccess(response.statusCode) && response.data != null) {
         return responseDecoder(response.data);
       }
       return response;
@@ -93,7 +99,7 @@ base class BaseController<T> extends ApiController<T> {
         onReceiveProgress: onReceiveProgress,
       );
 
-      if (response.statusCode == 200 && response.data != null) {
+      if (_isSuccess(response.statusCode) && response.data != null) {
         return Success(responseDecoder(response.data));
       }
       return Success(data);
