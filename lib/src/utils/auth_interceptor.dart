@@ -159,8 +159,7 @@ class AuthInterceptor extends Interceptor with NetworkClientLoggerMixin {
       }
     }
 
-    final enableLogs =
-        err.requestOptions.extra['enableLogs'] as bool? ?? true;
+    final enableLogs = err.requestOptions.extra['enableLogs'] as bool? ?? true;
     if (enableLogs) {
       logError(
         err,
@@ -265,5 +264,18 @@ class AuthInterceptor extends Interceptor with NetworkClientLoggerMixin {
     // await TokensManager.instance.deleteAll();
     _onShowMessage('Your session has expired. Please log in again.');
     await _onLogout();
+  }
+
+  @override
+  void onResponse(
+    Response<dynamic> response,
+    ResponseInterceptorHandler handler,
+  ) {
+    final enableLogs =
+        response.requestOptions.extra['enableLogs'] as bool? ?? true;
+    if (enableLogs) {
+      logResponse(response);
+    }
+    super.onResponse(response, handler);
   }
 }
