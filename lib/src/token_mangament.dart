@@ -10,6 +10,12 @@ class TokensManager {
   static const String _accessKey = 'access';
   static const String _refreshKey = 'refresh';
 
+  // In-memory cache to avoid Web Crypto race conditions on hot restart.
+  // On web, concurrent reads through flutter_secure_storage_web can race
+  // inside _getEncryptionKey and cause a DOMException during decrypt.
+  String? _cachedAccessToken;
+  String? _cachedRefreshToken;
+
   static const FlutterSecureStorage _storage = FlutterSecureStorage(
     webOptions: WebOptions(
       dbName: 'tokens_db',
@@ -18,8 +24,10 @@ class TokensManager {
     ),
   );
   static FlutterSecureStorage get storage => _storage;
+
   Future<void> saveAccess(String accessToken) async {
     logger.debug("Saving access token");
+    _cachedAccessToken = accessToken;
     return await _storage.write(
       key: _accessKey,
       value: accessToken,
@@ -28,6 +36,7 @@ class TokensManager {
 
   Future<void> saveRefresh(String refreshToken) async {
     logger.debug("Saving refresh token");
+    _cachedRefreshToken = refreshToken;
     return await _storage.write(
       key: _refreshKey,
       value: refreshToken,
@@ -35,24 +44,33 @@ class TokensManager {
   }
 
   Future<String?> retrieveAccess() async {
+    if (_cachedAccessToken != null) {
+      logger.debug("Access token found (cache)");
+      return _cachedAccessToken;
+    }
     final String? access = await _storage.read(
       key: _accessKey,
     );
     if (access != null) {
       logger.debug("Access token found");
+      _cachedAccessToken = access;
     } else {
       logger.warn("Access token not found");
     }
-
     return access;
   }
 
   Future<String?> retriveRefresh() async {
+    if (_cachedRefreshToken != null) {
+      logger.debug("Refresh token found (cache)");
+      return _cachedRefreshToken;
+    }
     final String? refresh = await _storage.read(
       key: _refreshKey,
     );
     if (refresh != null) {
       logger.debug("Refresh token found");
+      _cachedRefreshToken = refresh;
     } else {
       logger.warn("Refresh token not found");
     }
@@ -74,6 +92,8 @@ class TokensManager {
 
   Future<void> deleteAll() async {
     logger.warn("Deleting all tokens");
+    _cachedAccessToken = null;
+    _cachedRefreshToken = null;
     await _storage.deleteAll();
   }
 
